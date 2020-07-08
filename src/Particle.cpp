@@ -15,17 +15,13 @@ Particle::Particle(const unsigned int& id,const glm::vec3& position,const glm::v
 	 m_velocity(velocity),
 	 isStatic(isStatic)
 {
-	Init(m_particle_id, m_mass, m_density);
+	neighbors.clear();
 }
 
 Particle::~Particle()
 {
 }
 
-void Particle::Init(const unsigned int& m_particle_id, float& mass, float& density)
-{
-	neighbors.clear();
-}
 
 
 void Particle::ComputeDensity_SPH(const float& support)
@@ -37,6 +33,7 @@ void Particle::ComputeDensity_SPH(const float& support)
 
 		glm::vec3 r_diff = this->GetPos() - neighbor_pos;
 		new_density += neighbor_mass * W_poly6(r_diff, support);
+
 	}
 	
 	m_density = new_density;
@@ -137,6 +134,12 @@ glm::vec3 Particle::ComputeSurfaceTension_SPH(const float& support)
 		std::cout << "Surface Tension for Particle[" << this->GetID() << "] is " << sf[0] << "," << sf[1] << "," << sf[2] << std::endl;
 	}
 	return sf;
+}
+
+float Particle::delta(const float& support)
+{
+	
+	return 0.0f;
 }
 
 float Particle::GetDensity() const

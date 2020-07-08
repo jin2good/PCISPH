@@ -4,7 +4,7 @@
 
 
 class Particle {
-private:
+public:
 	const unsigned int m_particle_id;
 	float m_mass;
 	float m_density;
@@ -13,20 +13,22 @@ private:
 	
 	glm::vec3 m_position;
 	glm::vec3 m_velocity;
+	glm::vec3 m_accerlation;
 
 	glm::vec3 m_force;
 	glm::vec3 m_pressureforce;
-	glm::vec3 m_accerlation;
-public:
+	glm::vec3 m_viscosityforce;
+	glm::vec3 m_extforce;
+
+
 	std::list<const Particle*> neighbors;
-	glm::vec3 predicted_velocity;
-	glm::vec3 predicted_position;
+
+	glm::vec3 last_velocity;
+	glm::vec3 last_position;
 
 public:
 	Particle(const unsigned int& id, const glm::vec3& position,const glm::vec3& velocity, bool isStatic);
 	~Particle();
-
-	void Init(const unsigned int& m_particle_id, float& mass, float& density);
 
 	void ComputeDensity_SPH(const float& support);
 	void ComputePressure_SPH();
@@ -34,7 +36,7 @@ public:
 	glm::vec3 ComputeViscosity_SPH(const float& support);
 	glm::vec3 ComputeSurfaceTension_SPH(const float& support);
 
-	//void Move(glm::vec3& dir);
+	float delta(const float& support);
 
 	
 	float GetDensity() const;

@@ -36,7 +36,7 @@ void ParticleSystem::Update(double deltaTime)
 		Update_PCISPH(deltaTime);
 }
 
-void ParticleSystem::Update_SPH(double deltaTime)
+void ParticleSystem::Update_SPH(double deltaTime)	
 {
 	timestep = deltaTime;
 	/* Find Neighbors */
@@ -74,8 +74,8 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 		auto& particle = particle_list[particle_id];
 		
 		/* Compute Force v,g,ext */
-		glm::vec3 viscosity = particle.ComputeViscosity_SPH(KERNEL);
-		glm::vec3 gravity = glm::vec3(0, -GRAVITY, 0);
+		particle.m_viscosityforce = particle.ComputeViscosity_SPH(KERNEL);
+		particle.m_extforce = glm::vec3(0, -GRAVITY, 0);
 		
 		/* Initialied Pressure to 0.0 */
 		float initial_pressure = 0.0f;
@@ -87,25 +87,37 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	}
 
 	int iter = 0;
-	float predicted_density_error = 0.0f;
+	float average_density_error = 0.0f;
 	bool check = false;
 	while ((!check || (iter < MINITERATIONS)) && (iter < 100)) // density_error
 	{
-		check = true;
+		#pragma omp parallel for
+		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
+		{
+			auto& particle = particle_list[particle_id];
+			/* Calculate Accerlation */
+			particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
+			particle.m_accerlation = particle.m_force / particle.m_mass;
+
+			particle.last_velocity = particle.m_velocity;
+			particle.last_position = particle.m_position;
+			/* Predict Velocity and Position */
+			ComputeVelocityandPosition_SPH(particle_id, timestep);
+		}
+		
+		#pragma omp parallel for
 		for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
 			auto& particle = particle_list[particle_id];
-			/* predict velocity */
-			particle.predicted_velocity = particle.GetVelocity();
-			/* predict position */
-			particle.predicted_position = particle.GetPos();
-		}
-		for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
-		{
 			/* predict density */
-
+			particle.ComputeDensity_SPH(KERNEL);
 			/* predict density variation */
+			float density_err = particle.m_density - REST_DENSITY;
+
+			float beta = 2.0f * timestep * timestep * MASS * MASS / (REST_DENSITY * REST_DENSITY);
 			/* update pressure */
+
+			particle.m_pressure += density_err * particle.delta(KERNEL) / beta;
 		}
 		for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
@@ -116,6 +128,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 	{
 		/* compute new velocity */
+
 		/* compute new position */
 	}
 }

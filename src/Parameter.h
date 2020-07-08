@@ -17,7 +17,7 @@
 
 #define GRAVITY 3.8f
 
-#define MASS 0.02f
+#define MASS 20.0f
 #define REST_DENSITY 1000.0f
 #define GAS_CONSTANT 1.0f
 #define VISCOSITY_CONSTANT 6.5f
@@ -40,7 +40,7 @@
 //Initial Setting
 #define DAM_BREAKING_MODE true
 
-#define dt 0.01f // timestep
+#define dt 0.1f // timestep
 
 #define ENABLE_DEBUG_MODE false
 
