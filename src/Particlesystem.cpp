@@ -38,7 +38,7 @@ void ParticleSystem::Update(double deltaTime)
 
 void ParticleSystem::Update_SPH(double deltaTime)	
 {
-	timestep = deltaTime;
+	timestep = dt;
 	/* Find Neighbors */
 	FindNeighbors();
 
@@ -68,6 +68,7 @@ void ParticleSystem::Update_SPH(double deltaTime)
 
 void ParticleSystem::Update_PCISPH(double deltaTime)
 {
+	timestep = dt;
 	FindNeighbors();
 
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
@@ -96,7 +97,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	{
 		ComputeVelocityandPosition(timestep);
 
-//	#pragma omp parallel for
+	#pragma omp parallel for
 		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
 			auto& particle = particle_list[particle_id];
@@ -124,7 +125,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 			error_tolerable = true;
 		else false;
 
-//	#pragma omp parallel for
+	#pragma omp parallel for
 		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
 			/* compute pressure force */

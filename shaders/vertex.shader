@@ -11,5 +11,5 @@ void main()
 {
 	gl_Position = projMat * viewMat * worldMat * position;
 	fragDepth = gl_Position.z / gl_Position.w;
-	gl_PointSize = (1.0 - fragDepth) * 64.0;
+	gl_PointSize = (1.0 - fragDepth) * 50.0;
 }
