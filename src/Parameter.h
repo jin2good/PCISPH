@@ -4,7 +4,7 @@
 #define PARTICLE_INITIAL_BOUNDARY_Y 0.32f
 #define PARTICLE_INITIAL_BOUNDARY_Z 0.64f
 
-#define KERNEL 0.04f
+#define KERNEL 0.05f
 #define CELL_SIZE KERNEL 
 #define INITIAL_DIST KERNEL * 0.5f
 
@@ -15,19 +15,20 @@
 #define NUM_CELL (GRID_X + 1) * (GRID_Y + 1) * (GRID_Z + 1)
 #define PARTICLE_COUNT 5000
 
-#define GRAVITY 3.8f
+#define GRAVITY 0.98f
 
-#define MASS 20.0f
-#define REST_DENSITY 1000.0f
-#define GAS_CONSTANT 1.0f
-#define VISCOSITY_CONSTANT 6.5f
+#define MASS 0.02f         
+#define REST_DENSITY 4000.0f
+#define GAS_CONSTANT 0.3f
+#define VISCOSITY_CONSTANT 1.5f
 #define VISCOSITY_THRESHOLD 0.1f
 #define ST_THRESHOLD 6.0f
-#define TENSION_COEFF 0.1f
+#define TENSION_COEFF 1.0f
 
 //PCISPH Setting
 #define MINITERATIONS 3
-#define DENSITY_FLUCTUATION_THRESHOLD 0.01f
+#define DENSITY_FLUCTUATION_THRESHOLD 0.05f
+#define PRECOMPUTED_VALUE 1.0f
 
 // Input Setting
 #define ENABLE_KEY_INPUT true
@@ -38,11 +39,11 @@
 #define PCISPH 2
 
 //Initial Setting
-#define DAM_BREAKING_MODE true
+#define DAM_BREAKING_MODE false
 
-#define dt 0.1f // timestep
+#define dt 0.05f // timestep
 
-#define ENABLE_DEBUG_MODE false
+#define ENABLE_DEBUG_MODE true
 
 //Boundary Box
 #define WALL_DAMPING 1
@@ -59,7 +60,7 @@
 #define GET_NEIGHBOR_INFO false
 
 //Watch Particle
-#define WATCH_PARTICLE 9999
+#define WATCH_PARTICLE 1000
 
 #define SHOW_DENSITY true
 #define SHOW_PUESSURE true
@@ -68,10 +69,10 @@
 #define SHOW_TOTAL_FORCE true
 #define SHOW_PRESSUREFORCE true
 #define SHOW_VISCOSITY false
-#define SHOW_SURFACETENSION false
+#define SHOW_SURFACETENSION true
 
 #define SHOW_VEL false
-#define SHOW_POS false
+#define SHOW_POS true
 #define SHOW_LOAD_PARTICLE_VECTOR false
 
 

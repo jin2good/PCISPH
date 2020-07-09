@@ -136,11 +136,6 @@ glm::vec3 Particle::ComputeSurfaceTension_SPH(const float& support)
 	return sf;
 }
 
-float Particle::delta(const float& support)
-{
-	
-	return 0.0f;
-}
 
 float Particle::GetDensity() const
 {
@@ -183,8 +178,10 @@ void Particle::SetPos(glm::vec3& pos)
 	{
 		std::cout << "Tried to change Position of Static Particle[" << m_particle_id << "]" << std::endl;
 	}
-	else
+	else {
+		this->last_position = this->m_position;
 		this->m_position = pos;
+	}
 }
 
 void Particle::SetPressure(float& pressure)
@@ -198,8 +195,11 @@ void Particle::SetVelocity(glm::vec3& vel)
 	{
 		std::cout << "Tried to change Veloctiy of Static Particle" << m_particle_id << "]" << std::endl;
 	}
-	else
+	else {
+		this->last_velocity = this->m_velocity;
 		this->m_velocity = vel;
+	}
+		
 }
 
 

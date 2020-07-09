@@ -36,8 +36,6 @@ public:
 	glm::vec3 ComputeViscosity_SPH(const float& support);
 	glm::vec3 ComputeSurfaceTension_SPH(const float& support);
 
-	float delta(const float& support);
-
 	
 	float GetDensity() const;
 	float GetMass() const;

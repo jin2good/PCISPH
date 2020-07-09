@@ -69,6 +69,7 @@ void ParticleSystem::Update_SPH(double deltaTime)
 void ParticleSystem::Update_PCISPH(double deltaTime)
 {
 	FindNeighbors();
+
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
 	{
 		auto& particle = particle_list[particle_id];
@@ -84,53 +85,71 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 		/* Initialized PressureForce to zero */
 		glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
 		particle.SetPressureForce(zerovector);
+		particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
 	}
 
 	int iter = 0;
 	float average_density_error = 0.0f;
-	bool check = false;
-	while ((!check || (iter < MINITERATIONS)) && (iter < 100)) // density_error
-	{
-		#pragma omp parallel for
-		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
-		{
-			auto& particle = particle_list[particle_id];
-			/* Calculate Accerlation */
-			particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
-			particle.m_accerlation = particle.m_force / particle.m_mass;
+	bool error_tolerable = false;
 
-			particle.last_velocity = particle.m_velocity;
-			particle.last_position = particle.m_position;
-			/* Predict Velocity and Position */
-			ComputeVelocityandPosition_SPH(particle_id, timestep);
-		}
-		
-		#pragma omp parallel for
-		for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
+	while ((!error_tolerable || (iter < MINITERATIONS)) && (iter < 10)) // density_error
+	{
+		ComputeVelocityandPosition(timestep);
+
+//	#pragma omp parallel for
+		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
 			auto& particle = particle_list[particle_id];
 			/* predict density */
 			particle.ComputeDensity_SPH(KERNEL);
 			/* predict density variation */
-			float density_err = particle.m_density - REST_DENSITY;
+			float density_err = (std::max(particle.m_density, REST_DENSITY) - REST_DENSITY); //when density is estimated to be big enough(aka. compressed)
 
-			float beta = 2.0f * timestep * timestep * MASS * MASS / (REST_DENSITY * REST_DENSITY);
+			average_density_error += density_err;
+			
+
+			//float delta = PRECOMPUTED_VALUE * (REST_DENSITY * REST_DENSITY)  / (2.0f * timestep * timestep * MASS * MASS);
 			/* update pressure */
+			if (ENABLE_DEBUG_MODE && SHOW_PUESSURE && particle_id == WATCH_PARTICLE) {
+				std::cout << "Density Error : " << density_err << std::endl;
+			}
 
-			particle.m_pressure += density_err * particle.delta(KERNEL) / beta;
+			particle.m_pressure += density_err * PRECOMPUTED_VALUE;
+			if (ENABLE_DEBUG_MODE && SHOW_PUESSURE && particle_id == WATCH_PARTICLE) {
+				std::cout << "Computed Pressure for Particle[" << particle.GetID() << "] is " << particle.m_pressure << std::endl;
+			}
 		}
-		for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
+		average_density_error /= PARTICLE_COUNT;
+		if (average_density_error < DENSITY_FLUCTUATION_THRESHOLD)
+			error_tolerable = true;
+		else false;
+
+//	#pragma omp parallel for
+		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
 			/* compute pressure force */
+			auto& particle = particle_list[particle_id];
+			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL);
+			//particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
 		}
 		iter++;
 	}
-	for (unsigned int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
-	{
-		/* compute new velocity */
 
-		/* compute new position */
+//#pragma omp parallel for
+	for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
+	{
+		auto& particle = particle_list[particle_id];
+		particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
+		glm::vec3 force = particle.m_force;
+		if (ENABLE_DEBUG_MODE && SHOW_TOTAL_FORCE && (particle_id == WATCH_PARTICLE)) {
+			std::cout << "Total Force for Particle[" << particle_id << "] is " << force[0] << "," << force[1] << "," << force[2] << std::endl;
+		}
+		particle.m_position = particle.last_position;
+		particle.m_velocity = particle.last_velocity;
+		ComputeVelocityandPosition_SPH(particle_id, timestep);
 	}
+
+	LoadParticleVectorPosition();
 }
 
 float* ParticleSystem::GetParticlePositionArray()
@@ -419,10 +438,9 @@ void ParticleSystem::ComputeVelocityandPosition_SPH(const unsigned int& particle
 	
 	glm::vec3 force = particle.GetForce();
 	glm::vec3 lastVelocity = particle.GetVelocity();
-	glm::vec3 lastPostion = particle.GetPos();
-	float mass = particle.GetMass();
+	glm::vec3 lastPosition = particle.GetPos();
 
-	glm::vec3 accerlation = force;
+	glm::vec3 accerlation = force ;
 
 	/* Leap Frog Scheme */
 	glm::vec3 newVelocity = lastVelocity + accerlation * ts; // velocity at half timestep
@@ -432,7 +450,7 @@ void ParticleSystem::ComputeVelocityandPosition_SPH(const unsigned int& particle
 		posdiff.y = newVelocity.y * ts;
 		posdiff.z = newVelocity.z * ts;
 	}
-	glm::vec3 newPos = lastPostion + posdiff;
+	glm::vec3 newPos = lastPosition + posdiff;
 	if (BOUNDARY_MODE == WALL_DAMPING) {
 		if (newPos.x >= PARTICLE_INITIAL_BOUNDARY_X) {
 			newPos.x = PARTICLE_INITIAL_BOUNDARY_X;
