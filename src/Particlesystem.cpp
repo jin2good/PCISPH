@@ -87,6 +87,10 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 		glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
 		particle.SetPressureForce(zerovector);
 		particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
+		
+		if (ENABLE_DEBUG_MODE && SHOW_NONPUESSUREFORCE && particle_id == WATCH_PARTICLE) {
+			std::cout << "Computed nonPressureForce for Particle[" << particle_id << "] is " << particle.m_force[0] << "," << particle.m_force[1] << "," << particle.m_force[2] << std::endl;
+		}
 	}
 
 	int iter = 0;
@@ -95,8 +99,11 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 
 	while ((!error_tolerable || (iter <= MINITERATIONS)) && (iter <= MAXITERATIONS)) // density_error
 	{
+		//Predict New Velocity and Position
+		ComputeVelocityandPosition(timestep);
+
 	#pragma omp parallel for
-		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
+		for (int particle_id = 0; particle_id < particle_list.size(); particle_id++)
 		{
 			auto& particle = particle_list[particle_id];
 			/* predict density */
@@ -119,6 +126,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 			}
 		}
 		average_density_error /= PARTICLE_COUNT;
+		
 		if (average_density_error < DENSITY_FLUCTUATION_THRESHOLD)
 			error_tolerable = true;
 		else false;
@@ -133,7 +141,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 		}
 		if (ENABLE_DEBUG_MODE)
 			std::cout << std::endl;
-		ComputeVelocityandPosition(timestep);
+		
 		iter++;
 	}
 

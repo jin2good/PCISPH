@@ -28,19 +28,23 @@ Particle::~Particle()
 
 void Particle::ComputeDensity_SPH(const float& support)
 {
-	float new_density = 0.0f;
-	for (const auto& particle : neighbors) {
-		float neighbor_mass = particle->GetMass();
-		glm::vec3 neighbor_pos = particle->GetPos();
+	if (this->isStatic)
+		this->m_density = REST_DENSITY;
+	else {
+		float new_density = 0.0f;
+		for (const auto& particle : neighbors) {
+			float neighbor_mass = particle->GetMass();
+			glm::vec3 neighbor_pos = particle->GetPos();
 
-		glm::vec3 r_diff = this->GetPos() - neighbor_pos;
-		new_density += neighbor_mass * W_poly6(r_diff, support);
+			glm::vec3 r_diff = this->GetPos() - neighbor_pos;
+			new_density += neighbor_mass * W_poly6(r_diff, support);
 
+		}
+
+		m_density = new_density;
 	}
-	
-	m_density = new_density;
 	if (ENABLE_DEBUG_MODE && SHOW_DENSITY && (this->GetID() == WATCH_PARTICLE)) {
-		std::cout << "Computed Density for Particle[" << this->GetID() << "] is " << new_density << std::endl;
+		std::cout << "Computed Density for Particle[" << this->GetID() << "] is " << this->m_density << std::endl;
 	}
 }
 

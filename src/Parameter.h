@@ -63,6 +63,7 @@
 #define DISABLE_FORCE false
 #define SHOW_TOTAL_FORCE false
 #define SHOW_PRESSUREFORCE true
+#define SHOW_NONPUESSUREFORCE true
 #define SHOW_VISCOSITY false
 #define SHOW_SURFACETENSION false
 
