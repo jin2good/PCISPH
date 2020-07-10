@@ -1,0 +1,33 @@
+
+//Physics Setting
+#define dt 0.005f // timestep
+#define GRAVITY 0.98f
+
+#define MASS 0.02f         
+#define REST_DENSITY 1000.0f
+#define GAS_CONSTANT 2.5f
+#define VISCOSITY_CONSTANT 1.0f
+#define VISCOSITY_THRESHOLD 0.1f
+#define ST_THRESHOLD 1.0f
+#define TENSION_COEFF 1.0f
+
+//PCISPH Setting
+#define MINITERATIONS 3
+#define DENSITY_FLUCTUATION_THRESHOLD 0.05f
+#define PRECOMPUTED_VALUE 0.6f
+
+//Simulation Settings
+#define SPH 1
+#define PCISPH 2
+#define DAM_BREAKING_MODE false
+#define ENABLE_DEBUG_MODE true
+#define BOUNDARY_MODE WALL_DAMPING
+
+--------------------------------------------------------
+time taken: 0.0166746
+Computed Density for Particle[1000] is 1528.61
+Pressure for Particle[1000] is 607.907
+Total Force for Particle[1000] is 1.84422,-0.796198,-1.77274
+
+----------------------------------------------------------
+그나마 물처럼 보이는 버전

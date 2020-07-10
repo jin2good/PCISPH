@@ -93,10 +93,8 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	float average_density_error = 0.0f;
 	bool error_tolerable = false;
 
-	while ((!error_tolerable || (iter < MINITERATIONS)) && (iter < 10)) // density_error
+	while ((!error_tolerable || (iter <= MINITERATIONS)) && (iter <= MAXITERATIONS)) // density_error
 	{
-		ComputeVelocityandPosition(timestep);
-
 	#pragma omp parallel for
 		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
@@ -133,6 +131,9 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL);
 			//particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
 		}
+		if (ENABLE_DEBUG_MODE)
+			std::cout << std::endl;
+		ComputeVelocityandPosition(timestep);
 		iter++;
 	}
 
@@ -169,20 +170,20 @@ float* ParticleSystem::GetParticlePositionArray()
 void ParticleSystem::SetInitialParticlePosition()
 {
 	/* Initialize Position */
-	float particle_pos_X = INITIAL_DIST;
-	float particle_pos_Y = INITIAL_DIST;
-	float particle_pos_Z = INITIAL_DIST;
+	float particle_pos_X =  INITIAL_DIST;
+	float particle_pos_Y =  INITIAL_DIST;
+	float particle_pos_Z =  INITIAL_DIST;
 	glm::vec3 vel = glm::vec3(0, 0, 0);
 
 	for (unsigned int i = 0; i < PARTICLE_COUNT; i++) {
 
-		if (particle_pos_X >= (DAM_BREAKING_MODE ? PARTICLE_INITIAL_BOUNDARY_X/2 : PARTICLE_INITIAL_BOUNDARY_X)) {
-			particle_pos_X = INITIAL_DIST;
+		if (particle_pos_X >= (DAM_BREAKING_MODE ? PARTICLE_INITIAL_BOUNDARY_X/2 - INITIAL_DIST : PARTICLE_INITIAL_BOUNDARY_X - INITIAL_DIST)) {
+			particle_pos_X = 2 * INITIAL_DIST;
 			particle_pos_Z += INITIAL_DIST;
 		}
 
-		if (particle_pos_Z >= PARTICLE_INITIAL_BOUNDARY_Z) {
-			particle_pos_Z = INITIAL_DIST;
+		if (particle_pos_Z >= PARTICLE_INITIAL_BOUNDARY_Z - 2 * INITIAL_DIST) {
+			particle_pos_Z = 2 * INITIAL_DIST;
 			particle_pos_Y += INITIAL_DIST;
 		}
 
@@ -202,9 +203,9 @@ void ParticleSystem::SetInitialParticlePosition()
 		unsigned int i = PARTICLE_COUNT;
 
 		/* Create Bottom */
-		for (particle_pos_Y = 0; particle_pos_Y < INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2 * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-				for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2 * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_Y = 0; particle_pos_Y < INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY / 2) {
+			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+				for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
 					particle_list.push_back(Particle(i, pos, vel, true));
 					i++;
@@ -212,9 +213,9 @@ void ParticleSystem::SetInitialParticlePosition()
 			}
 		}
 		/* Create xy Plane */
-		for (particle_pos_Z = 0; particle_pos_Z < INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2 * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2 * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_Z = 0; particle_pos_Z < 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2.0f * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
 					particle_list.push_back(Particle(i, pos, vel, true));
 					i++;
@@ -222,9 +223,9 @@ void ParticleSystem::SetInitialParticlePosition()
 			}
 		}
 
-		for (particle_pos_Z = PARTICLE_INITIAL_BOUNDARY_Z + INITIAL_DIST; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2 * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2 * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2 * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_Z = PARTICLE_INITIAL_BOUNDARY_Z + INITIAL_DIST; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 3.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2.0f * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
 					particle_list.push_back(Particle(i, pos, vel, true));
 					i++;
@@ -232,9 +233,9 @@ void ParticleSystem::SetInitialParticlePosition()
 			}
 		}
 		/* Create zy Plane */
-		for (particle_pos_X = 0; particle_pos_X < INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-			for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2 * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2 * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_X = 0; particle_pos_X < 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+			for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2.0f * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
 					particle_list.push_back(Particle(i, pos, vel, true));
 					i++;
@@ -242,9 +243,9 @@ void ParticleSystem::SetInitialParticlePosition()
 			}
 		}
 
-		for (particle_pos_X = PARTICLE_INITIAL_BOUNDARY_X + INITIAL_DIST; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2 * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-			for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2 * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2 * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_X = PARTICLE_INITIAL_BOUNDARY_X + INITIAL_DIST; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 3.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+			for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2.0f * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
 					particle_list.push_back(Particle(i, pos, vel, true));
 					i++;
@@ -324,7 +325,12 @@ void ParticleSystem::ComputeDensity()
 #pragma omp parallel for
 	for(int i=0; i<particle_list.size(); i++) {
 		auto& particle = particle_list[i];
-		particle.ComputeDensity_SPH(KERNEL);
+		if (particle.isStatic) {
+			particle.m_density = REST_DENSITY;
+		}
+		else {
+			particle.ComputeDensity_SPH(KERNEL);
+		}
 	}
 }
 

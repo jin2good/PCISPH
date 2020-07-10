@@ -16,7 +16,7 @@ Particle::Particle(const unsigned int& id,const glm::vec3& position,const glm::v
 	 isStatic(isStatic)
 {
 	if (isStatic)
-		m_mass = MASS * 100.0f;
+		m_mass = MASS * WALL_PARTICLE_MASS;
 	neighbors.clear();
 }
 
@@ -83,7 +83,8 @@ glm::vec3 Particle::ComputeViscosity_SPH(const float& support)
 	for (const auto& particle : neighbors) {
 		if (particle->GetID() == this->GetID()) // 자기자신은 neighbor 아님
 			continue;
-
+		if (particle->isStatic)
+			continue;
 		glm::vec3 neighbor_pos = particle->GetPos();
 		float neighbor_mass = particle->GetMass();
 		float neighbor_density = particle->GetDensity();
