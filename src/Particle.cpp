@@ -15,6 +15,8 @@ Particle::Particle(const unsigned int& id,const glm::vec3& position,const glm::v
 	 m_velocity(velocity),
 	 isStatic(isStatic)
 {
+	if (isStatic)
+		m_mass = MASS * 100.0f;
 	neighbors.clear();
 }
 

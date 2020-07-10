@@ -102,7 +102,7 @@ int main(void)
         IndexBuffer box_ind(boxind, 30);
 
         /* particle system */
-        ParticleSystem* ps = new ParticleSystem(PCISPH);
+        ParticleSystem* ps = new ParticleSystem(SPH);
         float* particle_position = ps->GetParticlePositionArray();
 
 
