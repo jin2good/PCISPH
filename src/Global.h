@@ -5,6 +5,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -37,6 +38,10 @@ inline bool GLLogCall(const char* function, const char* file, int line) {  // in
     return true;
 }
 
+inline float sqr(const glm::vec3& vec) {
+    return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
+}
+
 inline float length(const glm::vec3& vec) {
-    return sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+    return sqrt(sqr(vec));
 }

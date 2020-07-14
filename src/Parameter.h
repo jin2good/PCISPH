@@ -16,7 +16,7 @@
 #define PARTICLE_COUNT 4000
 
 //Physics Setting
-#define dt 0.005f // timestep
+#define dt 0.016f // timestep
 #define GRAVITY 0.98f
 
 #define MASS 0.02f         
@@ -31,14 +31,15 @@
 #define MINITERATIONS 3
 #define MAXITERATIONS 3
 #define DENSITY_FLUCTUATION_THRESHOLD 0.05f
-#define PRECOMPUTED_VALUE 0.3f
+#define PRECOMPUTED_VALUE 0.25f
 
 //Simulation Settings
 #define SPH 1
 #define PCISPH 2
-#define DAM_BREAKING_MODE false
+#define DAM_BREAKING_MODE true
 #define ENABLE_DEBUG_MODE true
 #define BOUNDARY_MODE WALL_PARTICLE
+#define SHOW_TIME true
 
 //Boundary Box
 #define WALL_DAMPING 1
@@ -47,7 +48,7 @@
 #define WALL_DAMPING_VALUE -0.2f
 #define WALL_PARTICLE_DENSITY 1.0f
 #define SHOW_PARTICLE_BOX false
-#define WALL_PARTICLE_MASS 2.0f
+#define WALL_PARTICLE_MASS 4.0f
 
 //Neighborhood
 #define GRID_BASED_NEIGHBORHOOD_SEARCH true
@@ -57,13 +58,13 @@
 //Watch Particle
 #define WATCH_PARTICLE 1000
 
-#define SHOW_DENSITY true
-#define SHOW_PUESSURE true
+#define SHOW_DENSITY false
+#define SHOW_PUESSURE false
 
 #define DISABLE_FORCE false
 #define SHOW_TOTAL_FORCE false
-#define SHOW_PRESSUREFORCE true
-#define SHOW_NONPUESSUREFORCE true
+#define SHOW_PRESSUREFORCE false
+#define SHOW_NONPUESSUREFORCE false
 #define SHOW_VISCOSITY false
 #define SHOW_SURFACETENSION false
 

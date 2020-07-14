@@ -10,6 +10,17 @@
 class ParticleSystem {
 public:
 	int particle_count = 0;
+	clock_t sphStart, sphEnd;
+	double sphtime = 0;
+
+	clock_t NeighborsearchStart, NeighborsearchEnd;
+	double neighborsearchtime = 0;
+
+	clock_t EstimatePressureStart, EstimatePressureEnd;
+	double estimatepressuretime = 0;
+
+	clock_t PredictNewPosVelStart, PredictNewPosVelEnd;
+	double estimatePosVeltime = 0;
 private:
 	int SPHmode;
 	std::vector<Particle> particle_list;

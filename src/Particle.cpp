@@ -33,12 +33,20 @@ void Particle::ComputeDensity_SPH(const float& support)
 	else {
 		float new_density = 0.0f;
 		for (const auto& particle : neighbors) {
+			/*if (this->GetID() < particle->GetID()) {
+				float neighbor_mass = particle->GetMass();
+				glm::vec3 neighbor_pos = particle->GetPos();
+
+				glm::vec3 r_diff = this->GetPos() - neighbor_pos;
+				new_density += neighbor_mass * W_poly6(r_diff, support);
+			}*/
+			
 			float neighbor_mass = particle->GetMass();
 			glm::vec3 neighbor_pos = particle->GetPos();
 
 			glm::vec3 r_diff = this->GetPos() - neighbor_pos;
 			new_density += neighbor_mass * W_poly6(r_diff, support);
-
+			
 		}
 
 		m_density = new_density;

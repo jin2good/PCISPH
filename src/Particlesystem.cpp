@@ -15,6 +15,8 @@ ParticleSystem::~ParticleSystem()
 
 void ParticleSystem::Init()
 {
+	this->sphStart = clock();
+
 	SetInitialParticlePosition();
 
 	if (ENABLE_DEBUG_MODE) {
@@ -25,20 +27,32 @@ void ParticleSystem::Init()
 	}
 	/* Load particle position into particle_locaiton */
 	LoadParticleVectorPosition();
+
+	this->sphEnd = clock();
+	sphtime += (double)(sphEnd - sphStart);
 }
 
 void ParticleSystem::Update(double deltaTime)
 {
+	if( ENABLE_DEBUG_MODE && SHOW_TIME)
+		this->sphStart = clock();
+	
 	CellInsert(); // Cell
 	if (SPHmode == SPH)
 		Update_SPH(deltaTime);
 	if (SPHmode == PCISPH)
 		Update_PCISPH(deltaTime);
+
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		this->sphEnd = clock();
+		sphtime += (double)(sphEnd - sphStart);
+	}
 }
 
 void ParticleSystem::Update_SPH(double deltaTime)	
 {
 	timestep = dt;
+	
 	/* Find Neighbors */
 	FindNeighbors();
 
@@ -64,11 +78,15 @@ void ParticleSystem::Update_SPH(double deltaTime)
 	ComputeVelocityandPosition(timestep);
 
 	LoadParticleVectorPosition();
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		std::cout << "Elapsed Time: " << sphtime << std::endl;
+	}
 }
 
 void ParticleSystem::Update_PCISPH(double deltaTime)
 {
 	timestep = dt;
+
 	FindNeighbors();
 
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
@@ -76,7 +94,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 		auto& particle = particle_list[particle_id];
 		
 		/* Compute Force v,g,ext */
-		particle.m_viscosityforce = particle.ComputeViscosity_SPH(KERNEL);
+		particle.m_viscosityforce = particle.ComputeViscosity_SPH(KERNEL) / particle.GetDensity();
 		particle.m_extforce = glm::vec3(0, -GRAVITY, 0);
 		
 		/* Initialied Pressure to 0.0 */
@@ -97,11 +115,20 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	float average_density_error = 0.0f;
 	bool error_tolerable = false;
 
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		EstimatePressureStart = clock();
+	}
 	while ((!error_tolerable || (iter <= MINITERATIONS)) && (iter <= MAXITERATIONS)) // density_error
 	{
+		if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+			this->PredictNewPosVelStart = clock();
+		}
 		//Predict New Velocity and Position
 		ComputeVelocityandPosition(timestep);
 
+		if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+			this->PredictNewPosVelEnd = clock();
+		}
 	#pragma omp parallel for
 		for (int particle_id = 0; particle_id < particle_list.size(); particle_id++)
 		{
@@ -136,13 +163,21 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 		{
 			/* compute pressure force */
 			auto& particle = particle_list[particle_id];
-			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL);
-			//particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
+			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL) / particle.GetDensity();
+			
+			particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
+			particle.m_velocity = particle.last_velocity;
+			particle.m_position = particle.last_position;
 		}
 		if (ENABLE_DEBUG_MODE)
 			std::cout << std::endl;
 		
 		iter++;
+	}
+
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		this->EstimatePressureEnd = clock();
+		this->estimatepressuretime += (double)(this->EstimatePressureEnd - this->EstimatePressureStart);
 	}
 
 //#pragma omp parallel for
@@ -160,6 +195,12 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	}
 
 	LoadParticleVectorPosition();
+
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		std::cout << "Elapsed Time:      " << this->sphtime << std::endl;
+		std::cout << "NeighborSearch:    " << this->neighborsearchtime << std::endl;
+		std::cout << "Estimate Pressure: " << this->estimatepressuretime << std::endl;
+	}
 }
 
 float* ParticleSystem::GetParticlePositionArray()
@@ -211,9 +252,9 @@ void ParticleSystem::SetInitialParticlePosition()
 		unsigned int i = PARTICLE_COUNT;
 
 		/* Create Bottom */
-		for (particle_pos_Y = 0; particle_pos_Y < INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY / 2) {
-			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
-				for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_Y = - INITIAL_DIST; particle_pos_Y < INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY / 2) {
+			for (particle_pos_X = -INITIAL_DIST; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 3.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+				for (particle_pos_Z = -INITIAL_DIST; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 3.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
 					particle_list.push_back(Particle(i, pos, vel, true));
 					i++;
@@ -221,7 +262,7 @@ void ParticleSystem::SetInitialParticlePosition()
 			}
 		}
 		/* Create xy Plane */
-		for (particle_pos_Z = 0; particle_pos_Z < 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_Z = -INITIAL_DIST; particle_pos_Z < 1.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 			for (particle_pos_X = 0; particle_pos_X < PARTICLE_INITIAL_BOUNDARY_X + 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2.0f * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
@@ -241,7 +282,7 @@ void ParticleSystem::SetInitialParticlePosition()
 			}
 		}
 		/* Create zy Plane */
-		for (particle_pos_X = 0; particle_pos_X < 2.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
+		for (particle_pos_X = -INITIAL_DIST; particle_pos_X < 1.0f * INITIAL_DIST; particle_pos_X += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 			for (particle_pos_Z = 0; particle_pos_Z < PARTICLE_INITIAL_BOUNDARY_Z + 2.0f * INITIAL_DIST; particle_pos_Z += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 				for (particle_pos_Y = 0; particle_pos_Y < PARTICLE_INITIAL_BOUNDARY_Y + 2.0f * INITIAL_DIST; particle_pos_Y += INITIAL_DIST / WALL_PARTICLE_DENSITY) {
 					glm::vec3 pos = glm::vec3(particle_pos_X, particle_pos_Y, particle_pos_Z);
@@ -287,9 +328,13 @@ void ParticleSystem::LoadParticleVectorPosition()
 
 void ParticleSystem::FindNeighbors()
 {
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		this->NeighborsearchStart = clock();
+	}
+	
 	if (GRID_BASED_NEIGHBORHOOD_SEARCH) {
 #pragma omp parallel for
-		for (int i = 0; i < particle_list.size(); i++) {
+		for (int i = 0; i < PARTICLE_COUNT; i++) {
 			auto& particle = particle_list[i];
 
 			glm::vec3 ind = GetCellIndex(particle.GetPos());
@@ -311,8 +356,10 @@ void ParticleSystem::FindNeighbors()
 
 						for (auto& elem : Cell[CellCoord(nx, ny, nz)]) {
 							glm::vec3 rdiff = particle.GetPos() - elem->GetPos();
-							if(length(rdiff) < KERNEL)
+							if (sqr(rdiff) < KERNEL * KERNEL)
+							{
 								particle.neighbors.push_back(elem);
+							}
 						}
 					}
 				}
@@ -325,6 +372,10 @@ void ParticleSystem::FindNeighbors()
 			auto& particle = particle_list[i];
 			NaiveNeighborSearch(i);
 		}
+	}
+	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+		this->NeighborsearchEnd = clock();
+		this->neighborsearchtime += (double)(NeighborsearchEnd - NeighborsearchStart);
 	}
 }
 
