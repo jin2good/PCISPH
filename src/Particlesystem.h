@@ -37,6 +37,7 @@ public:
 	void Update(double deltaTime);
     void Update_SPH(double deltaTime);
 	void Update_PCISPH(double deltaTime);
+	void Update_GRANULAR(double deltaTime);
 	
 	float* GetParticlePositionArray();
 private:

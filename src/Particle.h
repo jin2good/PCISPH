@@ -9,6 +9,7 @@ public:
 	float m_mass;
 	float m_density;
 	float m_pressure;
+	glm::mat3 stress;
 	bool isStatic;
 	
 	glm::vec3 m_position;
