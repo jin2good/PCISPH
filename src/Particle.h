@@ -20,7 +20,7 @@ public:
 	glm::vec3 m_pressureforce;
 	glm::vec3 m_viscosityforce;
 	glm::vec3 m_extforce;
-
+	glm::vec3 m_friction_cohesion;
 
 	std::list<const Particle*> neighbors;
 
@@ -33,10 +33,12 @@ public:
 
 	void ComputeDensity_SPH(const float& support);
 	void ComputePressure_SPH();
+
 	glm::vec3 ComputePressureForce_SPH(const float& support);
 	glm::vec3 ComputeViscosity_SPH(const float& support);
 	glm::vec3 ComputeSurfaceTension_SPH(const float& support);
-
+	glm::vec3 ComputeFrictionCohesion(const float& support);
+	glm::mat3 VelocityGradient(const float& support);
 	
 	float GetDensity() const;
 	float GetMass() const;

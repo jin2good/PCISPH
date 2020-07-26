@@ -28,6 +28,10 @@ void ParticleSystem::Init()
 	/* Load particle position into particle_locaiton */
 	LoadParticleVectorPosition();
 
+	#ifdef USE_PRECOMPUTED_VALUE
+	// Calculate Precompued Values
+	#endif
+
 	this->sphEnd = clock();
 	sphtime += (double)(sphEnd - sphStart);
 }
@@ -42,6 +46,8 @@ void ParticleSystem::Update(double deltaTime)
 		Update_SPH(deltaTime);
 	if (SPHmode == PCISPH)
 		Update_PCISPH(deltaTime);
+	if (SPHmode == GRANULAR)
+		Update_GRANULAR(deltaTime);
 
 	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
 		this->sphEnd = clock();
@@ -139,14 +145,13 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 			float density_err = (std::max(particle.m_density, REST_DENSITY) - REST_DENSITY); //when density is estimated to be big enough(aka. compressed)
 
 			average_density_error += density_err;
-			
 
 			//float delta = PRECOMPUTED_VALUE * (REST_DENSITY * REST_DENSITY)  / (2.0f * timestep * timestep * MASS * MASS);
-			/* update pressure */
 			if (ENABLE_DEBUG_MODE && SHOW_PUESSURE && particle_id == WATCH_PARTICLE) {
 				std::cout << "Density Error : " << density_err << std::endl;
 			}
 
+			/* Update Pressure */
 			particle.m_pressure += density_err * PRECOMPUTED_VALUE;
 			if (ENABLE_DEBUG_MODE && SHOW_PUESSURE && particle_id == WATCH_PARTICLE) {
 				std::cout << "Computed Pressure for Particle[" << particle.GetID() << "] is " << particle.m_pressure << std::endl;
@@ -227,9 +232,6 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 		/* Initialize stress*/
 		particle.stress = glm::mat3(zerovector, zerovector, zerovector);
 
-		/* Update Force*/
-		particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
-
 		if (ENABLE_DEBUG_MODE && SHOW_NONPUESSUREFORCE && particle_id == WATCH_PARTICLE) {
 			std::cout << "Computed nonPressureForce for Particle[" << particle_id << "] is " << particle.m_force[0] << "," << particle.m_force[1] << "," << particle.m_force[2] << std::endl;
 		}
@@ -237,74 +239,107 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 
 	int iter = 0;
 	float average_density_error = 0.0f;
+	float average_friction = 0.0f;
+	float average_cohesion = 0.0f;
 	bool error_tolerable = false;
-
+	bool stress_tolerable = false;
 
 
 	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
 		EstimatePressureStart = clock();
 	}
-	while ((!error_tolerable || (iter <= MINITERATIONS)) && (iter <= MAXITERATIONS)) // density_error
+	while ( (!error_tolerable || !stress_tolerable || (iter <= MINITERATIONS) ) && (iter <= MAXITERATIONS)) // density_error
 	{
+
+#pragma omp parallel for /* Update Force*/
+		for (int particle_id = 0; particle_id < particle_list.size(); particle_id++) { 
+			auto& particle = particle_list[particle_id];
+
+			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL) / particle.GetDensity();
+			particle.m_friction_cohesion = particle.ComputeFrictionCohesion(KERNEL);
+			particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce + particle.m_friction_cohesion;
+		}
+
 		if (ENABLE_DEBUG_MODE && SHOW_TIME) {
 			this->PredictNewPosVelStart = clock();
 		}
+
 		//Predict New Velocity and Position
 		ComputeVelocityandPosition(timestep);
 
 		if (ENABLE_DEBUG_MODE && SHOW_TIME) {
 			this->PredictNewPosVelEnd = clock();
 		}
+
 #pragma omp parallel for
 		for (int particle_id = 0; particle_id < particle_list.size(); particle_id++)
 		{
 			auto& particle = particle_list[particle_id];
 			/* predict density */
 			particle.ComputeDensity_SPH(KERNEL);
+			
 			/* predict density variation */
 			float density_err = (std::max(particle.m_density, REST_DENSITY) - REST_DENSITY); //when density is estimated to be big enough(aka. compressed)
 
 			average_density_error += density_err;
 
-
-			//float delta = PRECOMPUTED_VALUE * (REST_DENSITY * REST_DENSITY)  / (2.0f * timestep * timestep * MASS * MASS);
-			/* update pressure */
 			if (ENABLE_DEBUG_MODE && SHOW_PUESSURE && particle_id == WATCH_PARTICLE) {
 				std::cout << "Density Error : " << density_err << std::endl;
 			}
 
+			/* update pressure */
 			particle.m_pressure += density_err * PRECOMPUTED_VALUE;
 			if (ENABLE_DEBUG_MODE && SHOW_PUESSURE && particle_id == WATCH_PARTICLE) {
 				std::cout << "Computed Pressure for Particle[" << particle.GetID() << "] is " << particle.m_pressure << std::endl;
 			}
+
+			if (ENABLE_DEBUG_MODE && SHOW_TIME) {
+				this->EstimatePressureEnd = clock();
+				this->estimatepressuretime += (double)(this->EstimatePressureEnd - this->EstimatePressureStart);
+			}
+			/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+			/* Predict Strain Rate */
+			glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
+			glm::mat3 velocity_gradient = particle.VelocityGradient(KERNEL);
+			glm::mat3 strain_rate = glm::mat3(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5) * (velocity_gradient + glm::transpose(velocity_gradient));
+			
+			std::cout << "VG: " << velocity_gradient[0][0] << velocity_gradient[0][1] << velocity_gradient[0][2] << std::endl << velocity_gradient[1][0] << velocity_gradient[1][1] << velocity_gradient[1][2] << std::endl << velocity_gradient[2][0] << velocity_gradient[2][1] << velocity_gradient[2][2] << std::endl;
+			/* Compute Dissipative Stress */
+			#ifdef USE_PRECOMPUTED_VALUE
+			particle.stress += inv_precomputed_stress * strain_rate;
+			#endif
+
+			/* Test yield and cohesion */
+			glm::mat3 deviatoric = particle.stress - (0.3f * trace(particle.stress)) * glm::mat3(1.0f);
+
+			//average_friction += Fnorm(deviatoric) < (2.0 / 3.0)* std::sin(30 * 3.14159 / 180.0) * std::sin(30 * 3.14159 / 180.0) * particle.GetPressure() * particle.GetPressure();
+			//average_cohesion += Fnorm(particle.stress) < COHESION;
 		}
+
 		average_density_error /= PARTICLE_COUNT;
 
 		if (average_density_error < DENSITY_FLUCTUATION_THRESHOLD)
 			error_tolerable = true;
 		else false;
 
-#pragma omp parallel for
+
+#pragma omp parallel for /* Rollback Velocity and Position */
 		for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
 		{
-			/* compute pressure force */
+			
 			auto& particle = particle_list[particle_id];
-			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL) / particle.GetDensity();
-
-			particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce;
+			
 			particle.m_velocity = particle.last_velocity;
 			particle.m_position = particle.last_position;
 		}
+		
 		if (ENABLE_DEBUG_MODE)
 			std::cout << std::endl;
 
 		iter++;
 	}
 
-	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
-		this->EstimatePressureEnd = clock();
-		this->estimatepressuretime += (double)(this->EstimatePressureEnd - this->EstimatePressureStart);
-	}
+
 
 	//#pragma omp parallel for
 	for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
@@ -315,8 +350,6 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 		if (ENABLE_DEBUG_MODE && SHOW_TOTAL_FORCE && (particle_id == WATCH_PARTICLE)) {
 			std::cout << "Total Force for Particle[" << particle_id << "] is " << force[0] << "," << force[1] << "," << force[2] << std::endl;
 		}
-		particle.m_position = particle.last_position;
-		particle.m_velocity = particle.last_velocity;
 		ComputeVelocityandPosition_SPH(particle_id, timestep);
 	}
 
@@ -679,5 +712,21 @@ void ParticleSystem::ComputeVelocityandPosition_SPH(const unsigned int& particle
 	if (ENABLE_DEBUG_MODE && SHOW_VEL && (particle_id == WATCH_PARTICLE)) {
 		std::cout << "New Velocity for Particle[" << particle_id << "] is " << newVelocity[0] << "," << newVelocity[1] << "," << newVelocity[2] << std::endl;
 	}
+}
+
+float ParticleSystem::trace(const glm::mat3& mat)
+{
+	return mat[0][0] + mat[1][1] + mat[2][2];
+}
+
+float ParticleSystem::Fnorm(const glm::mat3& mat)
+{
+	float fnorm = 0.0f;
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			fnorm += mat[i][j] * mat[i][j];
+		}
+	}
+	return (float)fnorm;
 }
 

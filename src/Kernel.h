@@ -3,9 +3,6 @@
 
 #define PI 3.141592f
 
-// 1. Replace length
-// 2. what if r_diff is zero vector -> should deal in particle.cpp ?
-
 float W_poly6(const glm::vec3& r_diff, const float& support) {
 	float dist = glm::sqrt(glm::pow(r_diff.x, 2.0f) + glm::pow(r_diff.y, 2.0f) + glm::pow(r_diff.z, 2.0f));
 	if (dist <= support) {

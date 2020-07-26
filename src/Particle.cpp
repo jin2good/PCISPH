@@ -66,6 +66,19 @@ void Particle::ComputePressure_SPH()
 	m_pressure = pressure;
 }
 
+glm::mat3 Particle::VelocityGradient(const float& support)
+{
+	glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
+	glm::mat3 velocity_gradient = glm::mat3(zerovector, zerovector, zerovector);
+	for (const auto& n_particle : this->neighbors) {
+		glm::vec3 r_diff = n_particle->GetPos() - this->GetPos();
+		//velocity_gradient += (n_particle->GetMass() / n_particle->GetDensity()) * glm::outerProduct(Gradient_W_poly6(r_diff, KERNEL), n_particle->GetVelocity() - this->GetVelocity());
+		velocity_gradient += glm::outerProduct(Gradient_W_poly6(r_diff, KERNEL), (n_particle->GetVelocity() - this->GetVelocity()));
+
+	}
+	return velocity_gradient;
+}
+
 glm::vec3 Particle::ComputePressureForce_SPH(const float& support)
 {
 	glm::vec3 pf = glm::vec3(0 ,0 ,0);
@@ -149,6 +162,32 @@ glm::vec3 Particle::ComputeSurfaceTension_SPH(const float& support)
 		std::cout << "Surface Tension for Particle[" << this->GetID() << "] is " << sf[0] << "," << sf[1] << "," << sf[2] << std::endl;
 	}
 	return sf;
+}
+
+glm::vec3 Particle::ComputeFrictionCohesion(const float& support)
+{
+	glm::vec3 force = glm::vec3(0.0f, 0.0f, 0.0f);
+	for (const auto& particle : neighbors) {
+		if (particle->GetID() == this->GetID())
+			continue;
+		float neighbor_mass = particle->GetMass();
+		glm::vec3 neighbor_pos = particle->GetPos();
+		float neighbor_pressure = particle->GetPressure();
+		float neighbor_density = particle->GetDensity();
+
+		glm::vec3 r_diff = this->GetPos() - neighbor_pos;
+		glm::vec3 gwspiky = Gradient_W_spiky(r_diff, support);
+		//force += neighbor_mass * ( (this->stress / (this->GetDensity() * this->GetDensity())) + (particle->stress / (particle->GetDensity() * particle->GetDensity()) ) ) * Gradient_W_spiky(r_diff, support);
+		force += neighbor_mass * ((this->stress) + (particle->stress)) * gwspiky;
+	}
+
+	if (isvecnan(force))
+		force = glm::vec3(0, 0, 0);
+
+	if (ENABLE_DEBUG_MODE && SHOW_FRICTIONCOHESION && (this->GetID() == WATCH_PARTICLE)) {
+		std::cout << "FrictionCohesion for Particle[" << this->GetID() << "] is " << force[0] << "," << force[1] << "," << force[2] << std::endl;
+	}
+	return force;
 }
 
 

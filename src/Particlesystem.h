@@ -21,6 +21,8 @@ public:
 
 	clock_t PredictNewPosVelStart, PredictNewPosVelEnd;
 	double estimatePosVeltime = 0;
+
+	glm::mat3 inv_precomputed_stress = glm::mat3(1.0f);
 private:
 	int SPHmode;
 	std::vector<Particle> particle_list;
@@ -65,9 +67,9 @@ private:
 
 	void ComputeVelocityandPosition_SPH(const unsigned int& particle_id, double timestep);
 
-	/* For PCISPH */
+	float trace(const glm::mat3& mat);
 
-	
+	float Fnorm(const glm::mat3& mat);
 
 	
 	

@@ -33,13 +33,19 @@
 #define DENSITY_FLUCTUATION_THRESHOLD 0.05f
 #define PRECOMPUTED_VALUE 0.25f
 
+//GRANULAR Setting
+#define ACTIVATE_COHESION true;
+#define COHESION 1.0f
+
 //Simulation Settings
 #define SPH 1
 #define PCISPH 2
+#define GRANULAR 3
 #define DAM_BREAKING_MODE true
 #define ENABLE_DEBUG_MODE true
 #define BOUNDARY_MODE WALL_PARTICLE
 #define SHOW_TIME true
+#define USE_PRECOMPUTED_VALUE true
 
 //Boundary Box
 #define WALL_DAMPING 1
@@ -59,14 +65,15 @@
 #define WATCH_PARTICLE 1000
 
 #define SHOW_DENSITY false
-#define SHOW_PUESSURE false
+#define SHOW_PUESSURE true
 
 #define DISABLE_FORCE false
-#define SHOW_TOTAL_FORCE false
-#define SHOW_PRESSUREFORCE false
-#define SHOW_NONPUESSUREFORCE false
+#define SHOW_TOTAL_FORCE true
+#define SHOW_PRESSUREFORCE true
+#define SHOW_NONPUESSUREFORCE true
 #define SHOW_VISCOSITY false
 #define SHOW_SURFACETENSION false
+#define SHOW_FRICTIONCOHESION true
 
 #define SHOW_VEL false
 #define SHOW_POS false
