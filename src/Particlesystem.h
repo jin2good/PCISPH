@@ -40,8 +40,8 @@ public:
     void Update_SPH(double deltaTime);
 	void Update_PCISPH(double deltaTime);
 	void Update_GRANULAR(double deltaTime);
-	
 	float* GetParticlePositionArray();
+
 private:
 	void SetInitialParticlePosition();
 	void LoadParticleVectorPosition();
@@ -49,9 +49,7 @@ private:
 	void FindNeighbors();
 	void ComputeDensity();
 	void ComputePressure();
-
 	void ComputeForce();
-
 	void ComputeVelocityandPosition(double timestep);
 	
 	/* For Grid Based Search */

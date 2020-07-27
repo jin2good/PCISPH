@@ -17,6 +17,10 @@ void ParticleSystem::Init()
 {
 	this->sphStart = clock();
 
+#ifdef USE_PRECOMPUTED_VALUE // Calculate Precompued Values
+	
+#endif
+
 	SetInitialParticlePosition();
 
 	if (ENABLE_DEBUG_MODE) {
@@ -28,9 +32,7 @@ void ParticleSystem::Init()
 	/* Load particle position into particle_locaiton */
 	LoadParticleVectorPosition();
 
-	#ifdef USE_PRECOMPUTED_VALUE
-	// Calculate Precompued Values
-	#endif
+
 
 	this->sphEnd = clock();
 	sphtime += (double)(sphEnd - sphStart);
@@ -303,7 +305,7 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 			glm::mat3 velocity_gradient = particle.VelocityGradient(KERNEL);
 			glm::mat3 strain_rate = glm::mat3(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5) * (velocity_gradient + glm::transpose(velocity_gradient));
 			
-			std::cout << "VG: " << velocity_gradient[0][0] << velocity_gradient[0][1] << velocity_gradient[0][2] << std::endl << velocity_gradient[1][0] << velocity_gradient[1][1] << velocity_gradient[1][2] << std::endl << velocity_gradient[2][0] << velocity_gradient[2][1] << velocity_gradient[2][2] << std::endl;
+			//std::cout << "VG: " << velocity_gradient[0][0] << velocity_gradient[0][1] << velocity_gradient[0][2] << std::endl << velocity_gradient[1][0] << velocity_gradient[1][1] << velocity_gradient[1][2] << std::endl << velocity_gradient[2][0] << velocity_gradient[2][1] << velocity_gradient[2][2] << std::endl;
 			/* Compute Dissipative Stress */
 			#ifdef USE_PRECOMPUTED_VALUE
 			particle.stress += inv_precomputed_stress * strain_rate;
@@ -338,8 +340,6 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 
 		iter++;
 	}
-
-
 
 	//#pragma omp parallel for
 	for (int particle_id = 0; particle_id < PARTICLE_COUNT; particle_id++)
