@@ -27,7 +27,6 @@ private:
 	int SPHmode;
 	std::vector<Particle> particle_list;
 	std::vector<float> particle_location;
-
 	
 	std::vector<std::list<const Particle*>> Cell;
 	double timestep = 0;
@@ -51,7 +50,8 @@ private:
 	void ComputePressure();
 	void ComputeForce();
 	void ComputeVelocityandPosition(double timestep);
-	
+	void Precompute();
+
 	/* For Grid Based Search */
 	void CellInsert();
 	glm::vec3 GetCellIndex(const glm::vec3& pos);
@@ -62,7 +62,6 @@ private:
 	
 	/* For SPH */
 	void ComputeForce_SPH(const unsigned int& particle_id);
-
 	void ComputeVelocityandPosition_SPH(const unsigned int& particle_id, double timestep);
 
 	float trace(const glm::mat3& mat);

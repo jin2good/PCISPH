@@ -38,8 +38,9 @@ public:
 	glm::vec3 ComputeViscosity_SPH(const float& support);
 	glm::vec3 ComputeSurfaceTension_SPH(const float& support);
 	glm::vec3 ComputeFrictionCohesion(const float& support);
+	glm::mat3 DeltaVelocityGradient(const float& support);
 	glm::mat3 VelocityGradient(const float& support);
-	
+	glm::mat3 CorrectiveFritionStress(const float& support);
 	float GetDensity() const;
 	float GetMass() const;
 	float GetPressure() const;

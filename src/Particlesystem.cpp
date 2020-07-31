@@ -18,7 +18,7 @@ void ParticleSystem::Init()
 	this->sphStart = clock();
 
 #ifdef USE_PRECOMPUTED_VALUE // Calculate Precompued Values
-	
+	Precompute();
 #endif
 
 	SetInitialParticlePosition();
@@ -96,6 +96,16 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 	timestep = dt;
 
 	FindNeighbors();
+
+	if (GET_NEIGHBOR_INFO) {
+		int max = 0;
+		for (int i = 0; i < particle_list.size(); i++) {
+			auto particle = particle_list[i];
+			int neighbor_count = particle.neighbors.size();
+			max = std::max(neighbor_count, max);
+		}
+		std::cout << "Max Neighbor num: " << max << std::endl;
+	}
 
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
 	{
@@ -205,8 +215,8 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 
 	if (ENABLE_DEBUG_MODE && SHOW_TIME) {
 		std::cout << "Elapsed Time:      " << this->sphtime << std::endl;
-		std::cout << "NeighborSearch:    " << this->neighborsearchtime << std::endl;
-		std::cout << "Estimate Pressure: " << this->estimatepressuretime << std::endl;
+		std::cout << "NeighborSearch Time   :    " << this->neighborsearchtime << std::endl;
+		std::cout << "Estimate Pressure Time: " << this->estimatepressuretime << std::endl;
 	}
 }
 
@@ -215,12 +225,22 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 
 	FindNeighbors();
 
+	if (GET_NEIGHBOR_INFO) {
+		int max = 0;
+		for (int i = 0; i < particle_list.size(); i++) {
+			auto particle = particle_list[i];
+			int neighbor_count = particle.neighbors.size();
+			max = std::max(neighbor_count, max);
+		}
+		std::cout << "Max Neighbor num: " << max << std::endl;
+	}
+
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
 	{
 		auto& particle = particle_list[particle_id];
 
 		/* Compute Force v,g,ext */
-		particle.m_viscosityforce = particle.ComputeViscosity_SPH(KERNEL) / particle.GetDensity();
+		particle.m_viscosityforce = particle.ComputeViscosity_SPH(KERNEL);
 		particle.m_extforce = glm::vec3(0, -GRAVITY, 0);
 
 		/* Initialied Pressure to 0.0 */
@@ -233,10 +253,6 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 
 		/* Initialize stress*/
 		particle.stress = glm::mat3(zerovector, zerovector, zerovector);
-
-		if (ENABLE_DEBUG_MODE && SHOW_NONPUESSUREFORCE && particle_id == WATCH_PARTICLE) {
-			std::cout << "Computed nonPressureForce for Particle[" << particle_id << "] is " << particle.m_force[0] << "," << particle.m_force[1] << "," << particle.m_force[2] << std::endl;
-		}
 	}
 
 	int iter = 0;
@@ -257,7 +273,7 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 		for (int particle_id = 0; particle_id < particle_list.size(); particle_id++) { 
 			auto& particle = particle_list[particle_id];
 
-			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL) / particle.GetDensity();
+			particle.m_pressureforce = particle.ComputePressureForce_SPH(KERNEL);
 			particle.m_friction_cohesion = particle.ComputeFrictionCohesion(KERNEL);
 			particle.m_force = particle.m_extforce + particle.m_viscosityforce + particle.m_pressureforce + particle.m_friction_cohesion;
 		}
@@ -299,21 +315,27 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 				this->EstimatePressureEnd = clock();
 				this->estimatepressuretime += (double)(this->EstimatePressureEnd - this->EstimatePressureStart);
 			}
+
 			/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
 			/* Predict Strain Rate */
 			glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
 			glm::mat3 velocity_gradient = particle.VelocityGradient(KERNEL);
 			glm::mat3 strain_rate = glm::mat3(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5) * (velocity_gradient + glm::transpose(velocity_gradient));
 			
-			//std::cout << "VG: " << velocity_gradient[0][0] << velocity_gradient[0][1] << velocity_gradient[0][2] << std::endl << velocity_gradient[1][0] << velocity_gradient[1][1] << velocity_gradient[1][2] << std::endl << velocity_gradient[2][0] << velocity_gradient[2][1] << velocity_gradient[2][2] << std::endl;
 			/* Compute Dissipative Stress */
+			glm::mat3 delta_vel_grad = particle.DeltaVelocityGradient(KERNEL);
 			#ifdef USE_PRECOMPUTED_VALUE
-			particle.stress += inv_precomputed_stress * strain_rate;
+			particle.stress += this->inv_precomputed_stress * (-delta_vel_grad);
 			#endif
+			if (ENABLE_DEBUG_MODE && SHOW_STRESS && particle_id == WATCH_PARTICLE) {
+				std::cout << "Computed Stress for Particle[" << particle.GetID() << "] is " << std::endl;
+				printmat3(particle.stress);
+			}
 
 			/* Test yield and cohesion */
 			glm::mat3 deviatoric = particle.stress - (0.3f * trace(particle.stress)) * glm::mat3(1.0f);
 
+			
 			//average_friction += Fnorm(deviatoric) < (2.0 / 3.0)* std::sin(30 * 3.14159 / 180.0) * std::sin(30 * 3.14159 / 180.0) * particle.GetPressure() * particle.GetPressure();
 			//average_cohesion += Fnorm(particle.stress) < COHESION;
 		}
@@ -577,6 +599,40 @@ void ParticleSystem::ComputeVelocityandPosition(double timestep)
 	{
 		ComputeVelocityandPosition_SPH(particle, timestep);
 	}
+}
+
+void ParticleSystem::Precompute()
+{
+	glm::vec3 zerovector = glm::vec3(0, 0, 0);
+	/* Set Initial Particle */
+	unsigned int id = 0;
+	particle_list.push_back(Particle(id, zerovector, zerovector, false));
+
+	glm::vec3 p = glm::vec3(-1.5f * CELL_SIZE, -1.5f * CELL_SIZE, -1.5f * CELL_SIZE);
+	for (int i_x = 0; i_x < 4; i_x++) {
+		for (int i_y = 0; i_y < 4; i_y++) {
+			for (int i_z = 0; i_z < 4; i_z++) {
+				id++;
+				glm::vec3 pos = p + glm::vec3(i_x * CELL_SIZE, i_y * CELL_SIZE, i_z * CELL_SIZE);
+				particle_list.push_back(Particle(id, pos, zerovector, false));
+			}
+		}
+	}
+	/* Add Neighbor*/
+	Particle& particle = particle_list[0];
+
+	for (int i = 1; i < particle_list.size(); i++) {
+		auto& neighbor = particle_list[i];
+		particle.neighbors.push_back(&neighbor);
+	}
+
+	/* Compute Gradient*/
+	//glm::mat3 D = (2 * particle.GetMass() * particle.GetMass() * dt / (particle.GetDensity() * particle.GetDensity())) * particle.CorrectiveFritionStress(KERNEL);
+	glm::mat3 invD = (REST_DENSITY * REST_DENSITY / (2.0f * dt * particle.GetMass() * particle.GetMass())) * inverse(particle.CorrectiveFritionStress(KERNEL));
+	std::cout << "Precomputed invD" << std::endl;
+	printmat3(invD);
+	inv_precomputed_stress = invD;
+	particle_list.clear();
 }
 
 

@@ -41,7 +41,7 @@
 #define SPH 1
 #define PCISPH 2
 #define GRANULAR 3
-#define DAM_BREAKING_MODE true
+#define DAM_BREAKING_MODE false
 #define ENABLE_DEBUG_MODE true
 #define BOUNDARY_MODE WALL_PARTICLE
 #define SHOW_TIME true
@@ -59,21 +59,22 @@
 //Neighborhood
 #define GRID_BASED_NEIGHBORHOOD_SEARCH true
 #define SHOW_NEIGHBORSEARCH_RESULT false
-#define GET_NEIGHBOR_INFO false
+#define GET_NEIGHBOR_INFO true
 
 //Watch Particle
 #define WATCH_PARTICLE 1000
 
 #define SHOW_DENSITY false
-#define SHOW_PUESSURE true
+#define SHOW_PUESSURE false
 
 #define DISABLE_FORCE false
 #define SHOW_TOTAL_FORCE true
 #define SHOW_PRESSUREFORCE true
-#define SHOW_NONPUESSUREFORCE true
-#define SHOW_VISCOSITY false
+#define SHOW_NONPUESSUREFORCE false
+#define SHOW_VISCOSITY true
 #define SHOW_SURFACETENSION false
 #define SHOW_FRICTIONCOHESION true
+#define SHOW_STRESS true
 
 #define SHOW_VEL false
 #define SHOW_POS false

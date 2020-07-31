@@ -45,3 +45,9 @@ inline float sqr(const glm::vec3& vec) {
 inline float length(const glm::vec3& vec) {
     return sqrt(sqr(vec));
 }
+
+inline void printmat3(const glm::mat3& mat) {
+    std::cout << "[ " << mat[0][0] << " " << mat[0][1] << " " << mat[0][2] << " ]" << std::endl;
+    std::cout << "[ " << mat[1][0] << " " << mat[1][1] << " " << mat[1][2] << " ]" << std::endl;
+    std::cout << "[ " << mat[2][0] << " " << mat[2][1] << " " << mat[2][2] << " ]" << std::endl;
+}

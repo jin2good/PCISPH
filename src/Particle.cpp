@@ -66,17 +66,42 @@ void Particle::ComputePressure_SPH()
 	m_pressure = pressure;
 }
 
+glm::mat3 Particle::DeltaVelocityGradient(const float& support)
+{
+	glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
+	glm::mat3 velocity_gradient = glm::mat3(zerovector, zerovector, zerovector);
+	for (const auto& n_particle : this->neighbors) {
+		glm::vec3 r_diff = n_particle->GetPos() - this->GetPos();
+		velocity_gradient += this->GetMass() * glm::outerProduct(Gradient_W_spiky(r_diff, support), n_particle->GetVelocity() - this->GetVelocity()) / n_particle->GetDensity();
+		//velocity_gradient += glm::outerProduct(Gradient_W_spiky(r_diff, KERNEL), (n_particle->GetVelocity() - this->GetVelocity()));
+
+	}
+	return velocity_gradient;
+}
+
 glm::mat3 Particle::VelocityGradient(const float& support)
 {
 	glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
 	glm::mat3 velocity_gradient = glm::mat3(zerovector, zerovector, zerovector);
 	for (const auto& n_particle : this->neighbors) {
 		glm::vec3 r_diff = n_particle->GetPos() - this->GetPos();
-		velocity_gradient += glm::outerProduct(Gradient_W_spiky(r_diff, KERNEL), n_particle->GetVelocity() - this->GetVelocity()) / n_particle->GetDensity();
+		velocity_gradient += this->GetMass() * glm::outerProduct(Gradient_W_spiky(r_diff, support), n_particle->GetVelocity()) / n_particle->GetDensity();
 		//velocity_gradient += glm::outerProduct(Gradient_W_spiky(r_diff, KERNEL), (n_particle->GetVelocity() - this->GetVelocity()));
 
 	}
 	return velocity_gradient;
+}
+
+glm::mat3 Particle::CorrectiveFritionStress(const float& support)
+{
+	glm::vec3 zerovector = glm::vec3(0.0f, 0.0f, 0.f);
+	glm::mat3 cfriction_stress = glm::mat3(zerovector, zerovector, zerovector);
+	for (const auto & n_particle : this->neighbors) {
+		glm::vec3 r_diff = n_particle->GetPos() - this->GetPos();
+		glm::vec3 gws = Gradient_W_spiky(r_diff, support);
+		cfriction_stress += glm::outerProduct(gws, gws);
+	}
+	return cfriction_stress;
 }
 
 glm::vec3 Particle::ComputePressureForce_SPH(const float& support)
@@ -96,8 +121,9 @@ glm::vec3 Particle::ComputePressureForce_SPH(const float& support)
 		pf -= neighbor_mass * (this->GetPressure() + neighbor_pressure) / (2.0f * neighbor_density) * Gradient_W_spiky(r_diff, support);
 	}
 
+	pf /= this->GetDensity();
 	if (ENABLE_DEBUG_MODE && SHOW_PRESSUREFORCE && (this->GetID() == WATCH_PARTICLE)) {
-		std::cout << "PressureForce for Particle[" << this->GetID() << "] is " << pf[0] << "," << pf[1] << "," << pf[2] << std::endl;
+		std::cout << "PressureForce for Particle[" << this->GetID() << "] is " << pf[0] << "," << pf[1]  << "," << pf[2]  << std::endl;
 	}
 	return pf;
 }
@@ -121,8 +147,9 @@ glm::vec3 Particle::ComputeViscosity_SPH(const float& support)
 		if(!isvecnan(per_neighbor))
 			vf += per_neighbor;
 	}
+	vf /= this->GetDensity();
 	if (ENABLE_DEBUG_MODE && SHOW_VISCOSITY && (this->GetID() == WATCH_PARTICLE)) {
-		std::cout << "ViscosityForce for Particle[" << this->GetID() << "] is " << vf[0] << "," << vf[1] << "," << vf[2] << std::endl;
+		std::cout << "ViscosityForce for Particle[" << this->GetID() << "] is " << vf[0] << "," << vf[1]  << "," << vf[2]  << std::endl;
 	}
 	return vf;
 }
@@ -177,15 +204,17 @@ glm::vec3 Particle::ComputeFrictionCohesion(const float& support)
 
 		glm::vec3 r_diff = this->GetPos() - neighbor_pos;
 		glm::vec3 gwspiky = Gradient_W_spiky(r_diff, support);
-		force += neighbor_mass * ( (this->stress / (this->GetDensity() * this->GetDensity())) + (particle->stress / (particle->GetDensity() * particle->GetDensity()) ) ) * Gradient_W_spiky(r_diff, support);
-		//force += neighbor_mass * ((this->stress) + (particle->stress)) * gwspiky;
+		glm::vec3 per_neighbor = neighbor_mass * ( (this->stress / (this->GetDensity() * this->GetDensity())) + (particle->stress / (particle->GetDensity() * particle->GetDensity()) ) ) * gwspiky;
+		//glm::vec3 per_neighbor =  neighbor_mass * ((this->stress / this->GetDensity()) + (particle->stress / this->GetDensity())) * gwspiky;
+		if (!isvecnan(force))
+			force += per_neighbor;
 	}
 
 	if (isvecnan(force))
 		force = glm::vec3(0, 0, 0);
 
 	if (ENABLE_DEBUG_MODE && SHOW_FRICTIONCOHESION && (this->GetID() == WATCH_PARTICLE)) {
-		std::cout << "FrictionCohesion for Particle[" << this->GetID() << "] is " << force[0] << "," << force[1] << "," << force[2] << std::endl;
+		std::cout << "FrictionCohesion for Particle[" << this->GetID() << "] is " << force[0]  << "," << force[1]  << "," << force[2]  << std::endl;
 	}
 	return force;
 }
