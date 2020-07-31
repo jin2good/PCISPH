@@ -104,7 +104,7 @@ void ParticleSystem::Update_PCISPH(double deltaTime)
 			int neighbor_count = particle.neighbors.size();
 			max = std::max(neighbor_count, max);
 		}
-		std::cout << "Max Neighbor num: " << max << std::endl;
+		//std::cout << "Max Neighbor num: " << max << std::endl;
 	}
 
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
@@ -232,7 +232,7 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 			int neighbor_count = particle.neighbors.size();
 			max = std::max(neighbor_count, max);
 		}
-		std::cout << "Max Neighbor num: " << max << std::endl;
+		//std::cout << "Max Neighbor num: " << max << std::endl;
 	}
 
 	for (unsigned int particle_id = 0; particle_id < particle_list.size(); particle_id++)
@@ -325,7 +325,7 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 			/* Compute Dissipative Stress */
 			glm::mat3 delta_vel_grad = particle.DeltaVelocityGradient(KERNEL);
 			#ifdef USE_PRECOMPUTED_VALUE
-			particle.stress += this->inv_precomputed_stress * (-delta_vel_grad);
+			particle.stress = 500.0f * glm::mat3(1.0f) * (-strain_rate);
 			#endif
 			if (ENABLE_DEBUG_MODE && SHOW_STRESS && particle_id == WATCH_PARTICLE) {
 				std::cout << "Computed Stress for Particle[" << particle.GetID() << "] is " << std::endl;
@@ -334,9 +334,19 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 
 			/* Test yield and cohesion */
 			glm::mat3 deviatoric = particle.stress - (0.3f * trace(particle.stress)) * glm::mat3(1.0f);
-
+			particle.stress = deviatoric;
 			
 			//average_friction += Fnorm(deviatoric) < (2.0 / 3.0)* std::sin(30 * 3.14159 / 180.0) * std::sin(30 * 3.14159 / 180.0) * particle.GetPressure() * particle.GetPressure();
+			for (int i = 0; i < 3; i++) {
+				for (int j = 0; j < 3; j++) {
+					if (std::abs(particle.stress[i][j]) > (2.0 / 3.0) * std::sin(FRICTION_DEGREE * 3.14159 / 180.0) * particle.GetPressure()) {
+						if (particle.stress[i][j] > 0)
+							particle.stress[i][j] = (2.0 / 3.0) * std::sin(FRICTION_DEGREE * 3.14159 / 180.0) * particle.GetPressure();
+						else
+							particle.stress[i][j] = - (2.0 / 3.0) * std::sin(FRICTION_DEGREE * 3.14159 / 180.0) * particle.GetPressure();
+					}
+				}
+			}
 			//average_cohesion += Fnorm(particle.stress) < COHESION;
 		}
 
@@ -373,6 +383,11 @@ void ParticleSystem::Update_GRANULAR(double deltaTime) {
 			std::cout << "Total Force for Particle[" << particle_id << "] is " << force[0] << "," << force[1] << "," << force[2] << std::endl;
 		}
 		ComputeVelocityandPosition_SPH(particle_id, timestep);
+		if (ENABLE_DEBUG_MODE) {
+			float num = glm::dot(glm::normalize(particle.m_velocity),glm::normalize(particle.m_friction_cohesion));
+			//std::cout << "Dot Product is:" << num << std::endl;
+			
+		}
 	}
 
 	LoadParticleVectorPosition();
@@ -691,15 +706,15 @@ void ParticleSystem::ComputeForce_SPH(const unsigned int& particle_id)
 	auto& particle = particle_list[particle_id];
 	glm::vec3 force = glm::vec3(0, 0, 0);
 	
-	glm::vec3 pressureforce = particle.ComputePressureForce_SPH(KERNEL) / particle.GetDensity();
+	glm::vec3 pressureforce = particle.ComputePressureForce_SPH(KERNEL);
 	
 	glm::vec3 extforce = glm::vec3(0, 0, 0); // Considered After New Position is Evaluated
 	
 	glm::vec3 gravity = glm::vec3(0, -GRAVITY, 0);
 
-	glm::vec3 viscosity = particle.ComputeViscosity_SPH(KERNEL) / particle.GetDensity();
+	glm::vec3 viscosity = particle.ComputeViscosity_SPH(KERNEL);
 	//viscosity = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 surfacetension = particle.ComputeSurfaceTension_SPH(KERNEL) / particle.GetDensity();
+	glm::vec3 surfacetension = particle.ComputeSurfaceTension_SPH(KERNEL);
 	//surfacetension = glm::vec3(0.0f, 0.0f, 0.0f);
 	force = (pressureforce + extforce + gravity + viscosity + surfacetension);
 	if (ENABLE_DEBUG_MODE && DISABLE_FORCE) {

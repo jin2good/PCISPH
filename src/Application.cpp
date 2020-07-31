@@ -213,7 +213,7 @@ int main(void)
                 }
                 
                 /* Draw Points */
-                shader.SetUniform4f("u_Color", 0.2f, 0.2f, 1.0f, 1.0f);
+                shader.SetUniform4f("u_Color", 0.6f, 0.6f, 0.2f, 1.0f);
                 renderer.DrawPoints(p_va, shader, (SHOW_PARTICLE_BOX ? ps->particle_count : PARTICLE_COUNT));
                 
                 ptr = ps->GetParticlePositionArray();

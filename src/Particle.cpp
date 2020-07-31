@@ -72,7 +72,7 @@ glm::mat3 Particle::DeltaVelocityGradient(const float& support)
 	glm::mat3 velocity_gradient = glm::mat3(zerovector, zerovector, zerovector);
 	for (const auto& n_particle : this->neighbors) {
 		glm::vec3 r_diff = n_particle->GetPos() - this->GetPos();
-		velocity_gradient += this->GetMass() * glm::outerProduct(Gradient_W_spiky(r_diff, support), n_particle->GetVelocity() - this->GetVelocity()) / n_particle->GetDensity();
+		velocity_gradient += this->GetMass() * glm::outerProduct(Gradient_W_spiky(r_diff, support), n_particle->GetVelocity() - n_particle->last_velocity) / n_particle->GetDensity();
 		//velocity_gradient += glm::outerProduct(Gradient_W_spiky(r_diff, KERNEL), (n_particle->GetVelocity() - this->GetVelocity()));
 
 	}
@@ -85,7 +85,7 @@ glm::mat3 Particle::VelocityGradient(const float& support)
 	glm::mat3 velocity_gradient = glm::mat3(zerovector, zerovector, zerovector);
 	for (const auto& n_particle : this->neighbors) {
 		glm::vec3 r_diff = n_particle->GetPos() - this->GetPos();
-		velocity_gradient += this->GetMass() * glm::outerProduct(Gradient_W_spiky(r_diff, support), n_particle->GetVelocity()) / n_particle->GetDensity();
+		velocity_gradient += this->GetMass() * glm::outerProduct(Gradient_W_spiky(r_diff, support), n_particle->GetVelocity() - this->GetVelocity()) / n_particle->GetDensity();
 		//velocity_gradient += glm::outerProduct(Gradient_W_spiky(r_diff, KERNEL), (n_particle->GetVelocity() - this->GetVelocity()));
 
 	}

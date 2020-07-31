@@ -4,6 +4,9 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <IL/il.h>
+#include <IL/ilu.h>
+#include <IL/ilut.h>
 #include <stdlib.h>
 #include <time.h>
 
